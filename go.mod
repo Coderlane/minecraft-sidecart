@@ -1,4 +1,4 @@
-module github.com/Coderlane/minecraft-sidecar
+module github.com/Coderlane/minecraft-sidecart
 
 go 1.15
 
