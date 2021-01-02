@@ -7,8 +7,8 @@ import (
 	"github.com/Coderlane/minecraft-sidecart/config"
 )
 
-var configPath = flag.String("config", "./sidecart_config.yml",
-	"Path to the sidecart configuration file.")
+var configPath = flag.String("config", "./server.properties",
+	"Path to the minecraft configuration file.")
 
 func main() {
 	_, err := config.ParseConfigFile(*configPath)

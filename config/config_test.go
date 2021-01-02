@@ -1,17 +1,35 @@
 package config
 
 import (
+	"io/ioutil"
+	"reflect"
 	"testing"
 )
 
+const testServerConfig = `
+motd=A Minecraft Server
+rcon.port=25575
+enable-rcon=true
+rcon.password=hunter2
+server-ip=
+server-port=25565`
+
 func TestDefaultConfig(t *testing.T) {
-	config, err := ParseConfigFile("../sidecart_config.yml")
+	testPath := t.TempDir() + "/server.properties"
+	ioutil.WriteFile(testPath, []byte(testServerConfig), 0600)
+	config, err := ParseConfigFile(testPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if config.RCON.Address != "localhost:25575" {
-		t.Errorf("Unexpected address. Got: %s Expected: %s\n",
-			config.RCON.Address, "localhost:25575")
+	expectedConfig := Config{
+		ServerPort: 25565,
+
+		RCONEnabled:  true,
+		RCONPassword: "hunter2",
+		RCONPort:     25575,
+	}
+	if !reflect.DeepEqual(expectedConfig, *config) {
+		t.Fatalf("Expected: %v Got: %v\n", expectedConfig, *config)
 	}
 }
 

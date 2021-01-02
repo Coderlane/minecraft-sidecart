@@ -3,16 +3,16 @@ package config
 import (
 	"io/ioutil"
 
-	"gopkg.in/yaml.v2"
+	"github.com/magiconair/properties"
 )
 
-type RCONConfig struct {
-	Address  string
-	Password string
-}
-
 type Config struct {
-	RCON RCONConfig
+	ServerIP   string `properties:"server-ip"`
+	ServerPort int    `properties:"server-port"`
+
+	RCONEnabled  bool   `properties:"enable-rcon"`
+	RCONPassword string `properties:"rcon.password"`
+	RCONPort     int    `properties:"rcon.port"`
 }
 
 func ParseConfigFile(path string) (*Config, error) {
@@ -24,8 +24,13 @@ func ParseConfigFile(path string) (*Config, error) {
 }
 
 func ParseConfig(data []byte) (*Config, error) {
+	prop, err := properties.Load(data, properties.UTF8)
+	if err != nil {
+		return nil, err
+	}
 	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	err = prop.Decode(&config)
+	if err != nil {
 		return nil, err
 	}
 	return &config, nil
