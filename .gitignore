@@ -3,3 +3,5 @@ auth/auth_config.go
 
 
 minecraft-sidecart
+
+refresh_token.json
