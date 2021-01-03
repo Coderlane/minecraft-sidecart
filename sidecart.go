@@ -13,16 +13,20 @@ import (
 var serverPath = flag.String("server", "./",
 	"Path to the root of the server.")
 
+var tokenPath = flag.String("token", "./refresh_token.json",
+	"Path to the refresh token.")
+
 func main() {
 	flag.Parse()
 
 	ctx := context.Background()
 	tsp := auth.NewFirebaseTokenSourceProvider()
-	_, err := tsp.TokenSource(ctx, nil)
+	ts, err := tsp.TokenSource(ctx, auth.LoadDiskToken(*tokenPath))
 	if err != nil {
 		fmt.Printf("Failed to get token: %v\n", err)
 		os.Exit(1)
 	}
+	ts = auth.InsecureDiskReuseTokenSource(*tokenPath, ts)
 
 	_, err = client.NewClient(*serverPath)
 	fmt.Println(*serverPath)

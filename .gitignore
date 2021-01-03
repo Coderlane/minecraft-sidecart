@@ -1,6 +1,7 @@
 .env
 auth/auth_config.go
 
+coverage.out
 
 minecraft-sidecart
 
