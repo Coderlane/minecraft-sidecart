@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -15,8 +16,9 @@ var serverPath = flag.String("server", "./",
 func main() {
 	flag.Parse()
 
-	tsp := auth.NewDefaultTokenSourceProvider()
-	_, err := tsp.TokenSource()
+	ctx := context.Background()
+	tsp := auth.NewFirebaseTokenSourceProvider()
+	_, err := tsp.TokenSource(ctx, nil)
 	if err != nil {
 		fmt.Printf("Failed to get token: %v\n", err)
 		os.Exit(1)

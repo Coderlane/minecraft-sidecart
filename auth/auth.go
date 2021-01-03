@@ -1,6 +1,5 @@
 // Package auth provides utilities for authenticating the client.
 //go:generate go run embed.go
-
 package auth
 
 import (
@@ -8,88 +7,76 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"golang.org/x/oauth2"
 	gauth "golang.org/x/oauth2/google"
 )
 
+// TokenSourceProvider is implemented by anything which can provide TokenSources
 type TokenSourceProvider interface {
-	TokenSource() (oauth2.TokenSource, error)
+	TokenSource(context.Context, *oauth2.Token) (oauth2.TokenSource, error)
 }
 
-type defaultTokenSourceProvider struct {
-	oauth2Config     *oauth2.Config
-	authTokenReader  io.Reader
-	refreshTokenPath string
+type firebaseTokenSourceProvider struct {
+	idpConfig       *IdpConfig
+	oauth2Config    *oauth2.Config
+	authTokenReader io.Reader
 }
 
-func NewDefaultTokenSourceProvider() TokenSourceProvider {
-	conf, err := gauth.ConfigFromJSON([]byte(defaultAuthJSON), "")
+// NewFirebaseTokenSourceProvider creates a new TokenSourceProvider for
+// Firebase based on the configs build in to the binary.
+func NewFirebaseTokenSourceProvider() TokenSourceProvider {
+	oauth2Config, err := gauth.ConfigFromJSON([]byte(defaultOAuthJSON), "")
 	if err != nil {
 		panic(err)
 	}
-
-	return NewDefaultTokenSourceProviderWithParams(
-		conf, os.Stdin, "./refresh_token.json")
+	idpConfig, err := ConfigFromJSON([]byte(defaultIDPJSON))
+	if err != nil {
+		panic(err)
+	}
+	return NewFirebaseTokenSourceProviderWithParams(
+		oauth2Config, idpConfig, os.Stdin)
 }
 
-func NewDefaultTokenSourceProviderWithParams(
-	conf *oauth2.Config, reader io.Reader, refreshTokenPath string) TokenSourceProvider {
+// NewFirebaseTokenSourceProviderWithParams creates a new TokenSourceProvider
+// for Firebase based on the input parameters.
+func NewFirebaseTokenSourceProviderWithParams(
+	oauth2Config *oauth2.Config, idpConfig *IdpConfig,
+	reader io.Reader) TokenSourceProvider {
 	// The only scopes we use are the scopes required for OAuth2:
 	// https://developers.google.com/identity/protocols/oauth2/scopes#oauth2
-	conf.Scopes = []string{
+	oauth2Config.Scopes = []string{
 		"https://www.googleapis.com/auth/userinfo.email",
 		"https://www.googleapis.com/auth/userinfo.profile",
 		"openid",
 	}
 	// We use OOB authentication as the server may not have a browser installed.
-	conf.RedirectURL = "urn:ietf:wg:oauth:2.0:oob"
-	return &defaultTokenSourceProvider{
-		oauth2Config:     conf,
-		authTokenReader:  reader,
-		refreshTokenPath: refreshTokenPath,
+	oauth2Config.RedirectURL = "urn:ietf:wg:oauth:2.0:oob"
+	return &firebaseTokenSourceProvider{
+		oauth2Config:    oauth2Config,
+		idpConfig:       idpConfig,
+		authTokenReader: reader,
 	}
 }
 
-func (tsp *defaultTokenSourceProvider) TokenSource() (oauth2.TokenSource, error) {
-	ctx := context.Background()
-	token, err := tsp.getRefreshToken()
-	if token == nil || err != nil {
-		if err != nil {
-			fmt.Println("Failed to read refresh token:", err)
-		}
+func (tsp *firebaseTokenSourceProvider) TokenSource(
+	ctx context.Context, token *oauth2.Token) (oauth2.TokenSource, error) {
+	var err error
+	if token == nil {
 		token, err = tsp.getNewToken(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
-	if err != nil {
-		return nil, err
-	}
-	ts := tsp.oauth2Config.TokenSource(ctx, token)
+
+	ts := tsp.idpConfig.TokenSource(ctx, token)
 	return ts, nil
 }
 
-func (tsp *defaultTokenSourceProvider) getRefreshToken() (*oauth2.Token, error) {
-	tokenData, err := ioutil.ReadFile(tsp.refreshTokenPath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	var token oauth2.Token
-	err = json.Unmarshal(tokenData, &token)
-	if err != nil {
-		return nil, err
-	}
-	return &token, nil
-}
-
-func (tsp *defaultTokenSourceProvider) getNewToken(
+func (tsp *firebaseTokenSourceProvider) getNewToken(
 	ctx context.Context) (*oauth2.Token, error) {
 	state, err := createRandomState()
 	if err != nil {
@@ -108,11 +95,7 @@ func (tsp *defaultTokenSourceProvider) getNewToken(
 	if err != nil {
 		return nil, err
 	}
-	tokenData, err := json.Marshal(token)
-	if err != nil {
-		return nil, err
-	}
-	err = ioutil.WriteFile(tsp.refreshTokenPath, tokenData, 0600)
+	token, err = tsp.idpConfig.Exchange(ctx, token)
 	if err != nil {
 		return nil, err
 	}
