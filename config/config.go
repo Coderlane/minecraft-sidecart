@@ -7,6 +7,9 @@ import (
 )
 
 type Config struct {
+	MotD       string `properties:"motd"`
+	MaxPlayers int    `properties:"max-players"`
+
 	ServerIP   string `properties:"server-ip"`
 	ServerPort int    `properties:"server-port"`
 

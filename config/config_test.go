@@ -8,6 +8,7 @@ import (
 
 const testServerConfig = `
 motd=A Minecraft Server
+max-players=20
 rcon.port=25575
 enable-rcon=true
 rcon.password=hunter2
@@ -22,6 +23,9 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	expectedConfig := Config{
+		MotD:       "A Minecraft Server",
+		MaxPlayers: 20,
+
 		ServerPort: 25565,
 
 		RCONEnabled:  true,
