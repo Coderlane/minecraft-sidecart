@@ -36,11 +36,12 @@ func newTestInsecureDiskReuseTokenSource(
 }
 
 func newTestToken(version int) *oauth2.Token {
-	return &oauth2.Token{
+	tok := oauth2.Token{
 		AccessToken:  fmt.Sprintf("access_token%d", version),
 		TokenType:    "Bearer",
 		RefreshToken: fmt.Sprintf("refresh_token%d", version),
 	}
+	return tok.WithExtra(map[string]interface{}{IdpUserID: "test_id"})
 }
 
 func TestInsecureDiskNewToken(t *testing.T) {

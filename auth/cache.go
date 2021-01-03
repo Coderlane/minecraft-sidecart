@@ -7,6 +7,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type cachedToken struct {
+	oauth2.Token
+	UserID string `json:"user_id,omitempty"`
+}
+
 // InsecureDiskReuseTokenSource writes tokens out to cachePath so they can be
 // reused in subsiquent runs. This is insecure as we are writing user
 // credentials to disk. Ideally, we'd write these to the OS's credential store.
@@ -22,10 +27,12 @@ func InsecureDiskReuseTokenSource(
 func LoadDiskToken(cachePath string) *oauth2.Token {
 	data, err := ioutil.ReadFile(cachePath)
 	if err == nil {
-		var token oauth2.Token
-		err = json.Unmarshal(data, &token)
+		var cacheToken cachedToken
+		err = json.Unmarshal(data, &cacheToken)
 		if err == nil {
-			return &token
+			return cacheToken.Token.WithExtra(map[string]interface{}{
+				IdpUserID: cacheToken.UserID,
+			})
 		}
 	}
 	return nil
@@ -53,7 +60,12 @@ func (idr *insecureDiskReuseTokenSource) Token() (*oauth2.Token, error) {
 	}
 	idr.token = token
 	// Save the token for later use.
-	data, err := json.Marshal(token)
+	userID, _ := token.Extra(IdpUserID).(string)
+	cacheToken := cachedToken{
+		Token:  *token,
+		UserID: userID,
+	}
+	data, err := json.Marshal(cacheToken)
 	if err == nil {
 		ioutil.WriteFile(idr.cachePath, data, 0600)
 	}

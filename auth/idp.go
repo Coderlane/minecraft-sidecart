@@ -14,6 +14,8 @@ import (
 )
 
 const (
+	IdpUserID string = "UserID"
+
 	defaultAuthURL  = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp"
 	defaultTokenURL = "https://securetoken.googleapis.com/v1/token"
 )
@@ -62,6 +64,10 @@ type idpRefreshResponse struct {
 	IDToken      string `json:"id_token"`
 	UserID       string `json:"user_id"`
 	ProjectID    string `json:"project_id"`
+}
+
+type idpExtra struct {
+	UserID string `json:"user_id"`
 }
 
 func fixupParsedURL(inputURL, defaultURL, key string) (string, error) {
@@ -142,16 +148,21 @@ func (cfg IdpConfig) Exchange(
 	if err := json.Unmarshal(data, &idpResp); err != nil {
 		return nil, err
 	}
+
 	expiry, err := fixupExpiry(idpResp.ExpiresIn)
 	if err != nil {
 		return nil, err
 	}
 
-	return &oauth2.Token{
+	token := &oauth2.Token{
 		AccessToken:  idpResp.IDToken,
 		RefreshToken: idpResp.RefreshToken,
 		Expiry:       *expiry,
-	}, nil
+	}
+	extra := map[string]interface{}{
+		IdpUserID: idpResp.LocalID,
+	}
+	return token.WithExtra(extra), nil
 }
 
 // Refresh gets a new IDP ID Token with the provided refresh token.
@@ -186,16 +197,21 @@ func (cfg IdpConfig) Refresh(
 	if err := json.Unmarshal(data, &idpResp); err != nil {
 		return nil, err
 	}
+
 	expiry, err := fixupExpiry(idpResp.ExpiresIn)
 	if err != nil {
 		return nil, err
 	}
 
-	return &oauth2.Token{
+	token := &oauth2.Token{
 		AccessToken:  idpResp.IDToken,
 		RefreshToken: idpResp.RefreshToken,
 		Expiry:       *expiry,
-	}, nil
+	}
+	extra := map[string]interface{}{
+		IdpUserID: idpResp.UserID,
+	}
+	return token.WithExtra(extra), nil
 }
 
 // TokenSource creates a new IDP Token Source which provides tokens with the
