@@ -8,6 +8,7 @@ import (
 
 	"github.com/Coderlane/minecraft-sidecart/auth"
 	"github.com/Coderlane/minecraft-sidecart/client"
+	"github.com/Coderlane/minecraft-sidecart/db"
 )
 
 var serverPath = flag.String("server", "./",
@@ -26,12 +27,23 @@ func main() {
 		fmt.Printf("Failed to get token: %v\n", err)
 		os.Exit(1)
 	}
-	ts = auth.InsecureDiskReuseTokenSource(*tokenPath, ts)
 
-	_, err = client.NewClient(*serverPath)
-	fmt.Println(*serverPath)
+	database, err := db.NewDatabase(ctx,
+		auth.InsecureDiskReuseTokenSource(*tokenPath, ts))
+	if err != nil {
+		fmt.Printf("Failed to initialize database: %v\n", err)
+		os.Exit(1)
+	}
+
+	cln, err := client.NewClient(*serverPath, database)
 	if err != nil {
 		fmt.Printf("Failed to create client: %v\n", err)
+		os.Exit(1)
+	}
+
+	err = cln.Start(ctx)
+	if err != nil {
+		fmt.Printf("Failed to start client: %v\n", err)
 		os.Exit(1)
 	}
 }
