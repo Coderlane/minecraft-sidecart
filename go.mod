@@ -4,7 +4,8 @@ go 1.15
 
 require (
 	cloud.google.com/go v0.72.0 // indirect
-	github.com/Coderlane/go-minecraft-ping v0.0.0-20210102042947-79ca4e9c3c34
+	github.com/Coderlane/go-minecraft-ping v0.0.0-20210103203720-466163658bab
+	github.com/golang/mock v1.4.4
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/magiconair/properties v1.8.4
 	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102
