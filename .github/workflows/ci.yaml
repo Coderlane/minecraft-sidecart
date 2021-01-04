@@ -22,11 +22,6 @@ jobs:
     - name: Add private token
       run:  git config --global url."https://${{ secrets.GO_TOKEN }}:x-oauth-basic@github.com/Coderlane".insteadOf "https://github.com/Coderlane"
 
-    - name: Generate
-      run: go generate -v ./...
-      env:
-        GOPRIVATE: github.com/Coderlane/go-minecraft-ping
-
     - name: Test
       run: go test -v -coverprofile=coverage.out ./...
       env:
