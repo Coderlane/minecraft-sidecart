@@ -5,7 +5,7 @@ import (
 )
 
 type serverDoc struct {
-	Type   server.Type
-	Owners []string
-	Info   interface{}
+	Type   server.Type `firestore:"type"`
+	Owners []string    `firestore:"owners"`
+	Info   interface{} `firestore:"info"`
 }

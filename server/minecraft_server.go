@@ -20,19 +20,19 @@ type minecraftServer struct {
 
 // MinecraftPlayerInfo represents a minecraft player
 type MinecraftPlayerInfo struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
+	Name string `json:"name" firestore:"name"`
+	ID   string `json:"id" firestore:"id"`
 }
 
 // MinecraftServerInfo provides information about a minecraft server
 type MinecraftServerInfo struct {
-	MotD   string `json:"motd"`
-	Online bool   `json:"online"`
+	MotD   string `json:"motd" firestore:"motd"`
+	Online bool   `json:"online" firestore:"online"`
 
-	Version       string                `json:"version"`
-	MaxPlayers    int                   `json:"max_players"`
-	OnlinePlayers int                   `json:"online_players"`
-	Players       []MinecraftPlayerInfo `json:"players"`
+	Version       string                `json:"version" firestore:"version"`
+	MaxPlayers    int                   `json:"max_players" firestore:"max_players"`
+	OnlinePlayers int                   `json:"online_players" firestore:"online_players"`
+	Players       []MinecraftPlayerInfo `json:"players" firestore:"players"`
 }
 
 // NewMinecraftServer creates a new client connection to a minecraft server
