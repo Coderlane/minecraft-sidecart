@@ -2,11 +2,9 @@ package server
 
 import (
 	"fmt"
-	"path"
 
+	config "github.com/Coderlane/go-minecraft-config"
 	"github.com/Coderlane/go-minecraft-ping/mcclient"
-
-	"github.com/Coderlane/minecraft-sidecart/config"
 )
 
 // MinecraftClientBuilder creates new minecraft clients from a config
@@ -21,7 +19,7 @@ type minecraftServer struct {
 // MinecraftPlayerInfo represents a minecraft player
 type MinecraftPlayerInfo struct {
 	Name string `json:"name" firestore:"name"`
-	ID   string `json:"id" firestore:"id"`
+	UUID string `json:"uuid" firestore:"uuid"`
 }
 
 // MinecraftServerInfo provides information about a minecraft server
@@ -30,6 +28,7 @@ type MinecraftServerInfo struct {
 	Online bool   `json:"online" firestore:"online"`
 
 	Version       string                `json:"version" firestore:"version"`
+	Icon          string                `json:"icon" firestore:"icon"`
 	MaxPlayers    int                   `json:"max_players" firestore:"max_players"`
 	OnlinePlayers int                   `json:"online_players" firestore:"online_players"`
 	Players       []MinecraftPlayerInfo `json:"players" firestore:"players"`
@@ -45,7 +44,7 @@ func NewMinecraftServer(serverDir string) (Server, error) {
 // builder, this is useful for testing.
 func newMinecraftServerWithCustomClientBuider(
 	serverDir string, clientBuilder MinecraftClientBuilder) (Server, error) {
-	cfg, err := config.ParseConfigFile(path.Join(serverDir, "server.properties"))
+	cfg, err := config.LoadConfig(serverDir)
 	if err != nil {
 		return nil, err
 	}
@@ -98,9 +97,9 @@ func cfgToOfflineServerInfo(cfg *config.Config) MinecraftServerInfo {
 }
 
 func statusToServerInfo(status *mcclient.StatusResponse) MinecraftServerInfo {
-	players := make([]MinecraftPlayerInfo, len(status.Players.Sample))
-	for index, player := range status.Players.Sample {
-		players[index].ID = player.ID
+	players := make([]MinecraftPlayerInfo, len(status.Players.Users))
+	for index, player := range status.Players.Users {
+		players[index].UUID = player.UUID
 		players[index].Name = player.Name
 	}
 	return MinecraftServerInfo{
@@ -108,6 +107,7 @@ func statusToServerInfo(status *mcclient.StatusResponse) MinecraftServerInfo {
 		Online: true,
 
 		Version: status.Version.Name,
+		Icon:    status.Favicon,
 
 		OnlinePlayers: status.Players.Online,
 		MaxPlayers:    status.Players.Max,

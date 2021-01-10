@@ -64,7 +64,7 @@ func (db *database) UpdateServerInfo(ctx context.Context,
 	serverID string, serverInfo interface{}) error {
 	_, err := db.store.Collection("servers").Doc(serverID).Update(
 		ctx, []firestore.Update{
-			{Path: "Info", Value: serverInfo},
+			{Path: "info", Value: serverInfo},
 		})
 	return err
 }

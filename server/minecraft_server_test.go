@@ -8,9 +8,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 
+	config "github.com/Coderlane/go-minecraft-config"
 	"github.com/Coderlane/go-minecraft-ping/mcclient"
-
-	"github.com/Coderlane/minecraft-sidecart/config"
 )
 
 const testServerConfig = `
@@ -85,7 +84,7 @@ func TestGetMinecraftServerInfoOnline(t *testing.T) {
 		Players: mcclient.StatusPlayers{
 			Max:    10,
 			Online: 1,
-			Sample: []mcclient.User{
+			Users: []mcclient.User{
 				{"test", "ffefd5"},
 			},
 		},
@@ -96,9 +95,9 @@ func TestGetMinecraftServerInfoOnline(t *testing.T) {
 	if !serverInfo.Online {
 		t.Errorf("Expected server to be online.")
 	}
-	if status.Players.Sample[0].Name != serverInfo.Players[0].Name {
+	if status.Players.Users[0].Name != serverInfo.Players[0].Name {
 		t.Errorf("Expected: %s Got: %s\n",
-			status.Players.Sample[0].Name, serverInfo.Players[0].Name)
+			status.Players.Users[0].Name, serverInfo.Players[0].Name)
 	}
 }
 
