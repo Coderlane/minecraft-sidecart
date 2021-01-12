@@ -16,4 +16,4 @@ Usage of ./minecraft-sidecart:
 
 For example: `./minecraft-sidecart --server /opt/minecraft/server` 
 
-The first run will require authenticating. You'll need to open the URL that `minecraft-sidecart` outputs in your browsers, authenticate, and copy the code back in to `minecraft-sidecart`. After that, `minecraft-sidecart` will automatically detect changes and upload them as necessary.
+The first run will require authenticating. You'll need to open the URL that `minecraft-sidecart` outputs, authenticate, and copy the code back in to `minecraft-sidecart`. After that, `minecraft-sidecart` will automatically detect changes and upload them as necessary.
