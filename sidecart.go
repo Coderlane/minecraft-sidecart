@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Coderlane/minecraft-sidecart/auth"
 	"github.com/Coderlane/minecraft-sidecart/client"
 	"github.com/Coderlane/minecraft-sidecart/db"
+	"github.com/Coderlane/minecraft-sidecart/firebase"
 )
 
 var serverPath = flag.String("server", "./",
@@ -21,21 +21,35 @@ func main() {
 	flag.Parse()
 
 	ctx := context.Background()
-	tsp := auth.NewFirebaseTokenSourceProvider()
-	ts, err := tsp.TokenSource(ctx, auth.LoadDiskToken(*tokenPath))
+	app := firebase.DefaultApp
+	uc := NewLocalUserCache(app.ProjectID)
+	auth := app.NewAuth(firebase.WithUserCache(uc))
+	if auth.CurrentUser() == nil {
+		cfg, err := firebase.NewOAuthConfig(firebase.GoogleAuthProvider)
+		if err != nil {
+			fmt.Printf("Failed to setup auth provider: %v\n", err)
+			os.Exit(1)
+		}
+		_, _, err = auth.SignInWithConsole(ctx, cfg)
+		if err != nil {
+			fmt.Printf("Failed to authenticate: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	firestore, err := app.NewFirestore(ctx, auth)
 	if err != nil {
-		fmt.Printf("Failed to get token: %v\n", err)
+		fmt.Printf("Failed to initialize firestore: %v\n", err)
 		os.Exit(1)
 	}
 
-	database, err := db.NewDatabase(ctx,
-		auth.InsecureDiskReuseTokenSource(*tokenPath, ts))
+	database, err := db.NewDatabase(ctx, firestore)
 	if err != nil {
 		fmt.Printf("Failed to initialize database: %v\n", err)
 		os.Exit(1)
 	}
 
-	cln, err := client.NewClient(*serverPath, database)
+	cln, err := client.NewClient(*serverPath, auth.CurrentUser(), database)
 	if err != nil {
 		fmt.Printf("Failed to create client: %v\n", err)
 		os.Exit(1)

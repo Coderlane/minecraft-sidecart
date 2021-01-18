@@ -1,6 +1,6 @@
 # Secrets
 .env
-auth/auth_config.go
+firebase/app_embed.go
 refresh_token.json
 
 # Golang

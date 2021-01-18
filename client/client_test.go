@@ -10,6 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/Coderlane/minecraft-sidecart/db"
+	"github.com/Coderlane/minecraft-sidecart/firebase"
 	"github.com/Coderlane/minecraft-sidecart/server"
 )
 
@@ -30,7 +31,8 @@ func newTestContext(t *testing.T) *testContext {
 	ctrl := gomock.NewController(t)
 	server := server.NewMockServer(ctrl)
 	db := db.NewMockDatabase(ctrl)
-	client := newClientWithParams(testDir, server, db, time.Millisecond*100)
+	user := &firebase.User{UserID: "test"}
+	client := newClientWithParams(testDir, user, server, db, time.Millisecond*100)
 	return &testContext{
 		testDir: testDir,
 		ctrl:    ctrl,
@@ -56,8 +58,8 @@ func TestCreateNewServer(t *testing.T) {
 	tc.server.EXPECT().GetType().Return(serverType)
 	tc.server.EXPECT().GetServerInfo().Return(serverInfo)
 
-	tc.db.EXPECT().CreateServer(ctx, serverType, serverInfo).DoAndReturn(
-		func(context.Context, server.Type, interface{}) (string, error) {
+	tc.db.EXPECT().CreateServer(ctx, "test", serverType, serverInfo).DoAndReturn(
+		func(context.Context, string, server.Type, interface{}) (string, error) {
 			cancel()
 			return testServerID, nil
 		})

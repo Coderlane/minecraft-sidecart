@@ -6,47 +6,30 @@ import (
 	"context"
 
 	firestore "cloud.google.com/go/firestore"
-	"google.golang.org/api/option"
 
-	"golang.org/x/oauth2"
-
-	"github.com/Coderlane/minecraft-sidecart/auth"
 	"github.com/Coderlane/minecraft-sidecart/server"
 )
 
 // Database wraps a firestore database connection
 type Database interface {
-	CreateServer(context.Context, server.Type, interface{}) (string, error)
+	CreateServer(context.Context, string, server.Type, interface{}) (string, error)
 	UpdateServerInfo(context.Context, string, interface{}) error
 }
 
 type database struct {
-	store       *firestore.Client
-	tokenSource oauth2.TokenSource
+	store *firestore.Client
 }
 
 // NewDatabase creates a new firestore database connection
 func NewDatabase(
-	ctx context.Context, tokenSource oauth2.TokenSource) (Database, error) {
-	authOpt := option.WithTokenSource(tokenSource)
-	store, err := firestore.NewClient(ctx, "minecraft-sidecart", authOpt)
-	if err != nil {
-		return nil, err
-	}
+	ctx context.Context, store *firestore.Client) (Database, error) {
 	return &database{
-		store:       store,
-		tokenSource: tokenSource,
+		store: store,
 	}, nil
 }
 
 func (db *database) CreateServer(ctx context.Context,
-	serverType server.Type, serverInfo interface{}) (string, error) {
-	token, err := db.tokenSource.Token()
-	if err != nil {
-		return "", err
-	}
-
-	userID := token.Extra(auth.IdpUserID).(string)
+	userID string, serverType server.Type, serverInfo interface{}) (string, error) {
 	serverDetails := serverDoc{
 		Type:   serverType,
 		Owners: []string{userID},

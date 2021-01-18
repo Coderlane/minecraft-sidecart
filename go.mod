@@ -8,7 +8,8 @@ require (
 	github.com/Coderlane/go-minecraft-config v0.0.0-20210110012816-95aeab5d29ca
 	github.com/Coderlane/go-minecraft-ping v0.0.0-20210110011415-a03d27fbf073
 	github.com/golang/mock v1.4.4
-	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
+	github.com/zalando/go-keyring v0.1.1
+	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
 	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
 	golang.org/x/sys v0.0.0-20210108172913-0df2131ae363 // indirect
 	golang.org/x/text v0.3.5 // indirect

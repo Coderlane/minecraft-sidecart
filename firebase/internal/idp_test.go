@@ -1,4 +1,4 @@
-package auth
+package internal
 
 import (
 	"context"
@@ -23,10 +23,7 @@ func testIdpConfig(t *testing.T) *IdpConfig {
 		t.Skipf("Environment variable FIREBASE_AUTH_EMULATOR_HOST is unset. " +
 			"This test requires the firebase auth emulator.")
 	}
-	cfg, err := configFromJSONWithEmulator([]byte(testIdpConfigData), emulatorHost)
-	if err != nil {
-		t.Fatal(err)
-	}
+	cfg := NewIdpConfig("test_api_key", emulatorHost)
 	return cfg
 }
 
@@ -55,7 +52,7 @@ func testAccessToken(t *testing.T) *oauth2.Token {
 func TestEmulatorExchangeToken(t *testing.T) {
 	cfg := testIdpConfig(t)
 	ctx := context.Background()
-	refreshToken, err := cfg.Exchange(ctx, testAccessToken(t))
+	_, refreshToken, err := cfg.Exchange(ctx, testAccessToken(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +69,7 @@ func TestEmulatorExchangeToken(t *testing.T) {
 func TestEmulatorExchangeInvalidToken(t *testing.T) {
 	cfg := testIdpConfig(t)
 	ctx := context.Background()
-	_, err := cfg.Exchange(ctx, &oauth2.Token{})
+	_, _, err := cfg.Exchange(ctx, &oauth2.Token{})
 	if err == nil {
 		t.Fatal("Expected an error")
 	}
@@ -87,7 +84,7 @@ func TestEmulatorExchangeInvalidToken(t *testing.T) {
 func TestEmulatorRefreshToken(t *testing.T) {
 	cfg := testIdpConfig(t)
 	ctx := context.Background()
-	refreshToken, err := cfg.Exchange(ctx, testAccessToken(t))
+	_, refreshToken, err := cfg.Exchange(ctx, testAccessToken(t))
 	if err != nil {
 		t.Fatal(err)
 	}

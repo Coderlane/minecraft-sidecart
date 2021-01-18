@@ -35,18 +35,18 @@ func (m *MockDatabase) EXPECT() *MockDatabaseMockRecorder {
 }
 
 // CreateServer mocks base method
-func (m *MockDatabase) CreateServer(arg0 context.Context, arg1 server.Type, arg2 interface{}) (string, error) {
+func (m *MockDatabase) CreateServer(arg0 context.Context, arg1 string, arg2 server.Type, arg3 interface{}) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateServer", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "CreateServer", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateServer indicates an expected call of CreateServer
-func (mr *MockDatabaseMockRecorder) CreateServer(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockDatabaseMockRecorder) CreateServer(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateServer", reflect.TypeOf((*MockDatabase)(nil).CreateServer), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateServer", reflect.TypeOf((*MockDatabase)(nil).CreateServer), arg0, arg1, arg2, arg3)
 }
 
 // UpdateServerInfo mocks base method

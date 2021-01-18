@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Coderlane/minecraft-sidecart/db"
+	"github.com/Coderlane/minecraft-sidecart/firebase"
 	"github.com/Coderlane/minecraft-sidecart/server"
 )
 
@@ -27,25 +28,28 @@ type client struct {
 	serverDir    string
 	srv          server.Server
 	db           db.Database
+	user         *firebase.User
 	pollInterval time.Duration
 }
 
 // NewClient creates a new client connection to a server
-func NewClient(serverDir string, db db.Database) (Client, error) {
+func NewClient(serverDir string,
+	user *firebase.User, db db.Database) (Client, error) {
 	srv, err := server.NewServer(serverDir)
 	if err != nil {
 		return nil, err
 	}
-	return newClientWithParams(serverDir, srv, db, defaultPollInterval), nil
+	return newClientWithParams(serverDir, user, srv, db, defaultPollInterval), nil
 }
 
-func newClientWithParams(serverDir string,
+func newClientWithParams(serverDir string, user *firebase.User,
 	srv server.Server, db db.Database, pollInterval time.Duration) Client {
 	return &client{
 		serverDir:    serverDir,
 		srv:          srv,
 		db:           db,
 		pollInterval: pollInterval,
+		user:         user,
 	}
 }
 
@@ -58,7 +62,7 @@ func (cln *client) getOrCreateServerID(ctx context.Context) (string, error) {
 	serverIDBytes, err := ioutil.ReadFile(serverIDPath)
 	serverID = string(serverIDBytes)
 	if os.IsNotExist(err) {
-		serverID, err = cln.db.CreateServer(ctx,
+		serverID, err = cln.db.CreateServer(ctx, cln.user.UserID,
 			cln.srv.GetType(), cln.srv.GetServerInfo())
 		if err != nil {
 			return "", err

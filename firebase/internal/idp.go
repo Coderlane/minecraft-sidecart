@@ -1,4 +1,4 @@
-package auth
+package internal
 
 import (
 	"bytes"
@@ -15,10 +15,6 @@ import (
 )
 
 const (
-	// IdpUserID is an extra field attached to all to tokens. Use:
-	// `token.Extra(IdpUserID)` to fetch a token's user ID.
-	IdpUserID string = "UserID"
-
 	defaultAuthHost  = "identitytoolkit.googleapis.com"
 	defaultAuthPath  = "v1/accounts:signInWithIdp"
 	defaultTokenHost = "securetoken.googleapis.com"
@@ -32,8 +28,15 @@ type IdpConfig struct {
 	authURL string
 	// tokenURL is the URL that allows refreshing IDP ID Tokens
 	tokenURL string
-	// APIKey is the API key used for IDP APIs
-	APIKey string `json:"api_key"`
+}
+
+type IdpUser struct {
+	LocalID       string `json:"localId"`
+	EmailVerified bool   `json:"emailVerified"`
+	Email         string `json:"email"`
+	DisplayName   string `json:"displayName"`
+	PhotoURL      string `json:"photoUrl"`
+	RefreshToken  string `json:"refreshToken"`
 }
 
 type idpExchangeRequest struct {
@@ -45,18 +48,14 @@ type idpExchangeRequest struct {
 }
 
 type idpExchangeResponse struct {
+	IdpUser
 	FederatedID      string `json:"federatedId"`
 	ProviderID       string `json:"providerId"`
-	LocalID          string `json:"localId"`
-	EmailVerified    bool   `json:"emailVerified"`
-	Email            string `json:"email"`
 	OAuthAccessToken string `json:"oauthAccessToken"`
 	FirstName        string `json:"firstName"`
 	LastName         string `json:"lastName"`
 	FullName         string `json:"fullName"`
-	DisplayName      string `json:"displayName"`
 	IDToken          string `json:"idToken"`
-	PhotoURL         string `json:"photoUrl"`
 	RefreshToken     string `json:"refreshToken"`
 	ExpiresIn        string `json:"expiresIn"`
 	RawUserInfo      string `json:"rawUserInfo"`
@@ -69,10 +68,6 @@ type idpRefreshResponse struct {
 	IDToken      string `json:"id_token"`
 	UserID       string `json:"user_id"`
 	ProjectID    string `json:"project_id"`
-}
-
-type idpExtra struct {
-	UserID string `json:"user_id"`
 }
 
 func buildAPIUrl(emulatorHost, apiHost, apiPath, apiKey string) string {
@@ -102,26 +97,16 @@ func fixupExpiry(expiryString string) (*time.Time, error) {
 	return &expiry, nil
 }
 
-// ConfigFromJSON parses an IdpConfig from its JSON representation, filling in
-// any necessary default values.
-func ConfigFromJSON(data []byte) (*IdpConfig, error) {
-	return configFromJSONWithEmulator(data, "")
-}
-
-func configFromJSONWithEmulator(data []byte, emulatorHost string) (*IdpConfig, error) {
-	var cfg IdpConfig
-	err := json.Unmarshal(data, &cfg)
-	if err != nil {
-		return nil, err
+func NewIdpConfig(apiKey, emulatorHost string) *IdpConfig {
+	return &IdpConfig{
+		authURL:  buildAPIUrl(emulatorHost, defaultAuthHost, defaultAuthPath, apiKey),
+		tokenURL: buildAPIUrl(emulatorHost, defaultTokenHost, defaultTokenPath, apiKey),
 	}
-	cfg.authURL = buildAPIUrl(emulatorHost, defaultAuthHost, defaultAuthPath, cfg.APIKey)
-	cfg.tokenURL = buildAPIUrl(emulatorHost, defaultTokenHost, defaultTokenPath, cfg.APIKey)
-	return &cfg, nil
 }
 
 // Exchange exchanges an OAuth2 Access Token for an IDP ID Token
 func (cfg IdpConfig) Exchange(
-	ctx context.Context, accessToken *oauth2.Token) (*oauth2.Token, error) {
+	ctx context.Context, accessToken *oauth2.Token) (*IdpUser, *oauth2.Token, error) {
 	postValues := url.Values{}
 	postValues.Add("providerId", "google.com")
 	idToken := accessToken.Extra("id_token")
@@ -147,28 +132,28 @@ func (cfg IdpConfig) Exchange(
 	client := &http.Client{}
 	resp, err := client.Do(request)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, newIdpError(err)
+		return nil, nil, newIdpError(err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, newIdpErrorFromResponse(
+		return nil, nil, newIdpErrorFromResponse(
 			fmt.Errorf("failed to exchange token"), resp.StatusCode, string(data))
 	}
 
 	var idpResp idpExchangeResponse
 	if err := json.Unmarshal(data, &idpResp); err != nil {
-		return nil, newIdpError(err)
+		return nil, nil, newIdpError(err)
 	}
 
 	expiry, err := fixupExpiry(idpResp.ExpiresIn)
 	if err != nil {
-		return nil, newIdpError(err)
+		return nil, nil, newIdpError(err)
 	}
 
 	token := &oauth2.Token{
@@ -176,10 +161,7 @@ func (cfg IdpConfig) Exchange(
 		RefreshToken: idpResp.RefreshToken,
 		Expiry:       *expiry,
 	}
-	extra := map[string]interface{}{
-		IdpUserID: idpResp.LocalID,
-	}
-	return token.WithExtra(extra), nil
+	return &idpResp.IdpUser, token, nil
 }
 
 // Refresh gets a new IDP ID Token with the provided refresh token.
@@ -228,10 +210,7 @@ func (cfg IdpConfig) Refresh(
 		RefreshToken: idpResp.RefreshToken,
 		Expiry:       *expiry,
 	}
-	extra := map[string]interface{}{
-		IdpUserID: idpResp.UserID,
-	}
-	return token.WithExtra(extra), nil
+	return token, nil
 }
 
 // TokenSource creates a new IDP Token Source which provides tokens with the
