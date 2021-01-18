@@ -24,6 +24,19 @@ jobs:
       with:
         node-version: '12'
 
+    - name: Golang Cache
+      uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+
+    - name: Firebase Cache
+      uses: actions/cache@v2
+      with:
+        path: .cache/firebase/emulators
+        key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
+      continue-on-error: true
+
     - name: Setup Firebase Emulator
       run: npm install -g firebase-tools
 
