@@ -2,7 +2,7 @@ package server
 
 //go:generate mockgen -destination=mock_server.go -package=server -self_package=github.com/Coderlane/minecraft-sidecart/server github.com/Coderlane/minecraft-sidecart/server Server
 
-// ServerType represents the type of game server
+// Type represents the type of game server
 type Type int
 
 const (
