@@ -2,13 +2,13 @@ package auth
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -20,11 +20,6 @@ const (
 	testOAuthCode    = "test_auth_code"
 
 	testOAuthToken = "test_auth_token"
-
-	testIdpIDToken      = "test_idp_token"
-	testIdpIDToken1     = "test_idp_token1"
-	testIdpIDToken2     = "test_idp_token2"
-	testIdpRefreshToken = "test_idp_refresh"
 )
 
 type testAuthServer struct {
@@ -55,8 +50,6 @@ func newTestAuthServer() *testAuthServer {
 	tas.authBuffer.WriteString(testOAuthCode + "\n")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/token", tas.handleOAuthToken)
-	mux.HandleFunc("/idp/auth", tas.handleIdpAuth)
-	mux.HandleFunc("/idp/token", tas.handleIdpToken)
 	tas.server = httptest.NewServer(mux)
 	return tas
 }
@@ -76,68 +69,22 @@ func (tas *testAuthServer) handleOAuthToken(
 	}
 	tokenValues := url.Values{}
 	tokenValues.Add("access_token", testOAuthToken)
+	tokenValues.Add("id_token", testIdToken(nil))
 	tokenValues.Add("token_type", "Bearer")
 	w.Header().Set("Content-Type", "application/x-www-form-urlencoded")
 	w.Write([]byte(tokenValues.Encode()))
 }
 
-func (tas *testAuthServer) handleIdpAuth(
-	w http.ResponseWriter, r *http.Request) {
-	data, _ := ioutil.ReadAll(r.Body)
-	var idpReq idpExchangeRequest
-	_ = json.Unmarshal(data, &idpReq)
-	values, _ := url.ParseQuery(idpReq.PostBody)
-	if !validateValues("access_token", testOAuthToken, values, w) {
-		return
-	}
-	if !validateValues("providerId", "google.com", values, w) {
-		return
-	}
-	idpResp := idpExchangeResponse{
-		IDToken:      fmt.Sprintf("%s%d", testIdpIDToken, tas.idpTokenCounter),
-		RefreshToken: testIdpRefreshToken,
-		ExpiresIn:    "3600",
-	}
-	w.Header().Set("Content-Type", "application/json")
-	enc := json.NewEncoder(w)
-	enc.Encode(idpResp)
-	tas.idpTokenCounter++
-}
-
-func (tas *testAuthServer) handleIdpToken(
-	w http.ResponseWriter, r *http.Request) {
-	data, _ := ioutil.ReadAll(r.Body)
-	values, _ := url.ParseQuery(string(data))
-	if !validateValues("refresh_token", testIdpRefreshToken, values, w) {
-		return
-	}
-	if !validateValues("grant_type", "refresh_token", values, w) {
-		return
-	}
-	idpResp := idpRefreshResponse{
-		IDToken:      fmt.Sprintf("%s%d", testIdpIDToken, tas.idpTokenCounter),
-		RefreshToken: testIdpRefreshToken,
-		ExpiresIn:    "3600",
-	}
-	w.Header().Set("Content-Type", "application/json")
-	enc := json.NewEncoder(w)
-	enc.Encode(idpResp)
-	tas.idpTokenCounter++
-}
-
-func (tas *testAuthServer) Config() (*oauth2.Config, *IdpConfig) {
+func (tas *testAuthServer) Config(t *testing.T) (*oauth2.Config, *IdpConfig) {
 	return &oauth2.Config{
-			ClientID:     testClientID,
-			ClientSecret: testClientSecret,
-			Endpoint: oauth2.Endpoint{
-				AuthStyle: oauth2.AuthStyleInParams,
-				AuthURL:   tas.server.URL + "/oauth/auth",
-				TokenURL:  tas.server.URL + "/oauth/token",
-			},
-		}, &IdpConfig{
-			AuthURL:  tas.server.URL + "/idp/auth",
-			TokenURL: tas.server.URL + "/idp/token",
-		}
+		ClientID:     testClientID,
+		ClientSecret: testClientSecret,
+		Endpoint: oauth2.Endpoint{
+			AuthStyle: oauth2.AuthStyleInParams,
+			AuthURL:   tas.server.URL + "/oauth/auth",
+			TokenURL:  tas.server.URL + "/oauth/token",
+		},
+	}, testIdpConfig(t)
 }
 
 func (tas *testAuthServer) Close() {
@@ -157,7 +104,7 @@ func TestAuthCode(t *testing.T) {
 	tas := newTestAuthServer()
 	defer tas.Close()
 
-	oauthConfig, idpConfig := tas.Config()
+	oauthConfig, idpConfig := tas.Config(t)
 	tsp := NewFirebaseTokenSourceProviderWithParams(
 		oauthConfig, idpConfig, &tas.authBuffer)
 	ctx := context.Background()
@@ -169,8 +116,10 @@ func TestAuthCode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if testIdpIDToken1 != tok.AccessToken {
-		t.Errorf("Expected: %s Got: %s\n", testIdpIDToken1, tok.AccessToken)
+	now := time.Now()
+	if now.After(tok.Expiry) {
+		t.Errorf("Expected time left on token. Now: %v Token: %v\n",
+			now, tok.Expiry)
 	}
 }
 
@@ -178,7 +127,7 @@ func TestRefreshAuth(t *testing.T) {
 	tas := newTestAuthServer()
 	defer tas.Close()
 
-	oauthConfig, idpConfig := tas.Config()
+	oauthConfig, idpConfig := tas.Config(t)
 	tsp := NewFirebaseTokenSourceProviderWithParams(
 		oauthConfig, idpConfig, &tas.authBuffer)
 	ctx := context.Background()
@@ -189,9 +138,6 @@ func TestRefreshAuth(t *testing.T) {
 	tok, err := ts.Token()
 	if err != nil {
 		t.Fatal(err)
-	}
-	if testIdpIDToken1 != tok.AccessToken {
-		t.Errorf("Expected: %s Got: %s\n", testIdpIDToken1, tok.AccessToken)
 	}
 
 	tsp = NewFirebaseTokenSourceProviderWithParams(
@@ -204,7 +150,9 @@ func TestRefreshAuth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if testIdpIDToken2 != tok.AccessToken {
-		t.Errorf("Expected: %s Got: %s\n", testIdpIDToken2, tok.AccessToken)
+	now := time.Now()
+	if now.After(tok.Expiry) {
+		t.Errorf("Expected time left on token. Now: %v Token: %v\n",
+			now, tok.Expiry)
 	}
 }

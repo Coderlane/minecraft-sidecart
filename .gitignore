@@ -6,3 +6,5 @@ coverage.out
 minecraft-sidecart
 
 refresh_token.json
+
+*.log

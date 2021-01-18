@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -14,19 +15,23 @@ import (
 )
 
 const (
+	// IdpUserID is an extra field attached to all to tokens. Use:
+	// `token.Extra(IdpUserID)` to fetch a token's user ID.
 	IdpUserID string = "UserID"
 
-	defaultAuthURL  = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp"
-	defaultTokenURL = "https://securetoken.googleapis.com/v1/token"
+	defaultAuthHost  = "identitytoolkit.googleapis.com"
+	defaultAuthPath  = "v1/accounts:signInWithIdp"
+	defaultTokenHost = "securetoken.googleapis.com"
+	defaultTokenPath = "v1/token"
 )
 
 // IdpConfig represents the configuration for the google identity provider
 type IdpConfig struct {
-	// AuthURL is the URL that OAuth2 Access Tokens are exchanged for IDP
+	// authURL is the URL that OAuth2 Access Tokens are exchanged for IDP
 	// ID Tokens
-	AuthURL string `json:"auth_url"`
-	// TokenURL is the URL that allows refreshing IDP ID Tokens
-	TokenURL string `json:"token_url"`
+	authURL string
+	// tokenURL is the URL that allows refreshing IDP ID Tokens
+	tokenURL string
 	// APIKey is the API key used for IDP APIs
 	APIKey string `json:"api_key"`
 }
@@ -70,18 +75,22 @@ type idpExtra struct {
 	UserID string `json:"user_id"`
 }
 
-func fixupParsedURL(inputURL, defaultURL, key string) (string, error) {
-	if inputURL == "" {
-		inputURL = defaultURL
+func buildAPIUrl(emulatorHost, apiHost, apiPath, apiKey string) string {
+	outputQuery := url.Values{}
+	outputQuery.Set("key", apiKey)
+	outputURL := url.URL{
+		RawQuery: outputQuery.Encode(),
 	}
-	outputURL, err := url.Parse(inputURL)
-	if err != nil {
-		return "", err
+	if emulatorHost == "" {
+		outputURL.Scheme = "https"
+		outputURL.Host = apiHost
+		outputURL.Path = apiPath
+	} else {
+		outputURL.Scheme = "http"
+		outputURL.Host = emulatorHost
+		outputURL.Path = fmt.Sprintf("%s/%s", apiHost, apiPath)
 	}
-	keyValues := outputURL.Query()
-	keyValues.Set("key", key)
-	outputURL.RawQuery = keyValues.Encode()
-	return outputURL.String(), nil
+	return outputURL.String()
 }
 
 func fixupExpiry(expiryString string) (*time.Time, error) {
@@ -96,29 +105,31 @@ func fixupExpiry(expiryString string) (*time.Time, error) {
 // ConfigFromJSON parses an IdpConfig from its JSON representation, filling in
 // any necessary default values.
 func ConfigFromJSON(data []byte) (*IdpConfig, error) {
+	return configFromJSONWithEmulator(data, "")
+}
+
+func configFromJSONWithEmulator(data []byte, emulatorHost string) (*IdpConfig, error) {
 	var cfg IdpConfig
 	err := json.Unmarshal(data, &cfg)
 	if err != nil {
 		return nil, err
 	}
-	cfg.AuthURL, err = fixupParsedURL(cfg.AuthURL, defaultAuthURL, cfg.APIKey)
-	if err != nil {
-		return nil, err
-	}
-	cfg.TokenURL, err = fixupParsedURL(cfg.TokenURL, defaultTokenURL, cfg.APIKey)
-	if err != nil {
-		return nil, err
-	}
+	cfg.authURL = buildAPIUrl(emulatorHost, defaultAuthHost, defaultAuthPath, cfg.APIKey)
+	cfg.tokenURL = buildAPIUrl(emulatorHost, defaultTokenHost, defaultTokenPath, cfg.APIKey)
 	return &cfg, nil
 }
 
 // Exchange exchanges an OAuth2 Access Token for an IDP ID Token
 func (cfg IdpConfig) Exchange(
 	ctx context.Context, accessToken *oauth2.Token) (*oauth2.Token, error) {
-
 	postValues := url.Values{}
-	postValues.Add("access_token", accessToken.AccessToken)
 	postValues.Add("providerId", "google.com")
+	idToken := accessToken.Extra("id_token")
+	if idToken != nil {
+		postValues.Add("id_token", idToken.(string))
+	} else {
+		postValues.Add("access_token", accessToken.AccessToken)
+	}
 
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -130,7 +141,7 @@ func (cfg IdpConfig) Exchange(
 	})
 
 	request, err := http.NewRequestWithContext(ctx,
-		http.MethodPost, cfg.AuthURL, &buf)
+		http.MethodPost, cfg.authURL, &buf)
 	request.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -142,16 +153,22 @@ func (cfg IdpConfig) Exchange(
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, newIdpError(err)
 	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, newIdpErrorFromResponse(
+			fmt.Errorf("failed to exchange token"), resp.StatusCode, string(data))
+	}
+
 	var idpResp idpExchangeResponse
 	if err := json.Unmarshal(data, &idpResp); err != nil {
-		return nil, err
+		return nil, newIdpError(err)
 	}
 
 	expiry, err := fixupExpiry(idpResp.ExpiresIn)
 	if err != nil {
-		return nil, err
+		return nil, newIdpError(err)
 	}
 
 	token := &oauth2.Token{
@@ -177,7 +194,7 @@ func (cfg IdpConfig) Refresh(
 	buf.WriteString(postValues.Encode())
 
 	request, err := http.NewRequestWithContext(ctx,
-		http.MethodPost, cfg.TokenURL, &buf)
+		http.MethodPost, cfg.tokenURL, &buf)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{}
@@ -188,19 +205,22 @@ func (cfg IdpConfig) Refresh(
 	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, newIdpError(err)
 	}
-	if resp.StatusCode != http.StatusOK {
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, newIdpErrorFromResponse(
+			fmt.Errorf("failed to exchange token"), resp.StatusCode, string(data))
 	}
+
 	var idpResp idpRefreshResponse
 	if err := json.Unmarshal(data, &idpResp); err != nil {
-		return nil, err
+		return nil, newIdpError(err)
 	}
 
 	expiry, err := fixupExpiry(idpResp.ExpiresIn)
 	if err != nil {
-		return nil, err
+		return nil, newIdpError(err)
 	}
 
 	token := &oauth2.Token{
