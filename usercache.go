@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/zalando/go-keyring"
+	"github.com/99designs/keyring"
 
 	"github.com/Coderlane/minecraft-sidecart/firebase"
 )
@@ -11,30 +11,37 @@ import (
 // LocalUserCache implements the UserCache interface by caching users
 // in the local keychain.
 type LocalUserCache struct {
-	projectID string
+	ring keyring.Keyring
 }
 
 // NewLocalUserCache creates a new LocalUserCache.
-func NewLocalUserCache(projectID string) *LocalUserCache {
-	return &LocalUserCache{
-		projectID: projectID,
+func NewLocalUserCache(projectID string) (*LocalUserCache, error) {
+	ring, err := keyring.Open(keyring.Config{
+		ServiceName:             projectID,
+		LibSecretCollectionName: "login",
+	})
+	if err != nil {
+		return nil, err
 	}
+	return &LocalUserCache{
+		ring: ring,
+	}, nil
 }
 
 // Get will fetch a user from the cache.
 // If no user is found, it returns (nil, nil)
 func (luc *LocalUserCache) Get(userID string) (*firebase.User, error) {
-	data, err := keyring.Get(luc.projectID, userID)
+	item, err := luc.ring.Get(userID)
 	if err != nil {
-		if err == keyring.ErrNotFound {
+		if err == keyring.ErrKeyNotFound {
 			return nil, nil
 		}
 		return nil, err
 	}
 	var user firebase.User
-	if err = json.Unmarshal([]byte(data), &user); err != nil {
+	if err = json.Unmarshal(item.Data, &user); err != nil {
 		// Corrupt entry, delete it
-		keyring.Delete(luc.projectID, userID)
+		luc.ring.Remove(userID)
 		return nil, err
 	}
 	return &user, nil
@@ -46,5 +53,8 @@ func (luc *LocalUserCache) Set(userID string, user *firebase.User) error {
 	if err != nil {
 		panic(err)
 	}
-	return keyring.Set(luc.projectID, userID, string(data))
+	return luc.ring.Set(keyring.Item{
+		Key:  userID,
+		Data: data,
+	})
 }

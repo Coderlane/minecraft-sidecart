@@ -22,7 +22,11 @@ func main() {
 
 	ctx := context.Background()
 	app := firebase.DefaultApp
-	uc := NewLocalUserCache(app.ProjectID)
+	uc, err := NewLocalUserCache(app.ProjectID)
+	if err != nil {
+		fmt.Printf("Failed to setup user cache: %v\n", err)
+		os.Exit(1)
+	}
 	auth := app.NewAuth(firebase.WithUserCache(uc))
 	if auth.CurrentUser() == nil {
 		cfg, err := firebase.NewOAuthConfig(firebase.GoogleAuthProvider)

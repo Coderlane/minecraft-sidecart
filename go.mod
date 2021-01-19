@@ -5,10 +5,11 @@ go 1.15
 require (
 	cloud.google.com/go v0.74.0 // indirect
 	cloud.google.com/go/firestore v1.4.0
+	github.com/99designs/keyring v1.1.6
 	github.com/Coderlane/go-minecraft-config v0.0.0-20210110012816-95aeab5d29ca
 	github.com/Coderlane/go-minecraft-ping v0.0.0-20210110011415-a03d27fbf073
+	github.com/danieljoos/wincred v1.1.0 // indirect
 	github.com/golang/mock v1.4.4
-	github.com/zalando/go-keyring v0.1.1
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
 	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
 	golang.org/x/sys v0.0.0-20210108172913-0df2131ae363 // indirect

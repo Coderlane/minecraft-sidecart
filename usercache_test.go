@@ -1,11 +1,10 @@
 package main
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
-	"github.com/zalando/go-keyring"
+	"github.com/99designs/keyring"
 
 	"github.com/Coderlane/minecraft-sidecart/firebase"
 )
@@ -15,19 +14,28 @@ const (
 	testUserID    = "test-user"
 )
 
-func skipCI(t *testing.T) {
-	if os.Getenv("CI") != "" {
-		t.Skip("Skipping in CI")
+func testNewUserCache(t *testing.T) (*LocalUserCache, keyring.Keyring) {
+	t.Helper()
+	ring, err := keyring.Open(keyring.Config{
+		ServiceName:             testProjectID,
+		LibSecretCollectionName: "login",
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
+	luc, err := NewLocalUserCache(testProjectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return luc, ring
 }
 
 func TestUserCacheGetSet(t *testing.T) {
-	skipCI(t)
+	luc, ring := testNewUserCache(t)
 	defer func() {
-		keyring.Delete(testProjectID, testUserID)
+		ring.Remove(testUserID)
 	}()
 
-	luc := NewLocalUserCache(testProjectID)
 	input := &firebase.User{
 		RefreshToken: "test",
 	}
@@ -55,16 +63,15 @@ func TestUserCacheGetSet(t *testing.T) {
 }
 
 func TestUserCacheGetCorruptRecovers(t *testing.T) {
-	skipCI(t)
+	luc, ring := testNewUserCache(t)
 	defer func() {
-		keyring.Delete(testProjectID, testUserID)
+		ring.Remove(testUserID)
 	}()
 
-	luc := NewLocalUserCache(testProjectID)
-	err := keyring.Set(testProjectID, testUserID, "invalid")
-	if err != nil {
-		t.Fatal(err)
-	}
+	err := ring.Set(keyring.Item{
+		Key:  testUserID,
+		Data: []byte("]invalid"),
+	})
 
 	_, err = luc.Get(testUserID)
 	if err == nil {
