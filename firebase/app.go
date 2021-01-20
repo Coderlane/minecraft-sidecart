@@ -38,10 +38,7 @@ func (app *App) NewAuth(opts ...AuthOption) *Auth {
 	if auth.userCache == nil {
 		return auth
 	}
-	user, err := auth.userCache.Get("default")
-	if err != nil {
-		return auth
-	}
+	user, _ := auth.userCache.Get("default")
 	auth.currentUser = user
 	return auth
 }
