@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
@@ -15,14 +14,8 @@ const (
 	testUserID    = "test-user"
 )
 
-func skipCI(t *testing.T) {
-	if os.Getenv("CI") != "" {
-		t.Skip("Skipping in CI")
-	}
-}
-
 func TestUserCacheGetSet(t *testing.T) {
-	skipCI(t)
+	keyring.MockInit()
 	defer func() {
 		keyring.Delete(testProjectID, testUserID)
 	}()
@@ -55,7 +48,7 @@ func TestUserCacheGetSet(t *testing.T) {
 }
 
 func TestUserCacheGetCorruptRecovers(t *testing.T) {
-	skipCI(t)
+	keyring.MockInit()
 	defer func() {
 		keyring.Delete(testProjectID, testUserID)
 	}()
