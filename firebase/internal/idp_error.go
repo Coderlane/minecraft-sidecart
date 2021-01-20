@@ -33,7 +33,7 @@ func newIdpErrorFromResponse(err error, code int, data string) error {
 func (err idpError) Temporary() bool {
 	switch err.code {
 	case http.StatusUnauthorized, http.StatusForbidden,
-		http.StatusNotImplemented:
+		http.StatusNotImplemented, http.StatusBadRequest:
 		return false
 	default:
 		return true

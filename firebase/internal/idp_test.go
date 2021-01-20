@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"os"
 	"testing"
@@ -81,6 +82,18 @@ func TestEmulatorExchangeInvalidToken(t *testing.T) {
 	}
 }
 
+func TestEmulatorExchangeInvalidHost(t *testing.T) {
+	cfg := NewIdpConfig("test_api_key", "invalid")
+	ctx := context.Background()
+	_, _, err := cfg.Exchange(ctx, testAccessToken(t))
+	if err == nil {
+		t.Fatal("Expected an error")
+	}
+	if err.(*url.Error).Timeout() {
+		t.Error("Expected a non-timeout error")
+	}
+}
+
 func TestEmulatorRefreshToken(t *testing.T) {
 	cfg := testIdpConfig(t)
 	ctx := context.Background()
@@ -102,5 +115,51 @@ func TestEmulatorRefreshToken(t *testing.T) {
 	if now.After(refreshToken.Expiry) {
 		t.Errorf("Expected time left on token. Now: %v Token: %v\n",
 			now, refreshToken.Expiry)
+	}
+}
+
+func TestEmulatorRefreshInvalidToken(t *testing.T) {
+	cfg := testIdpConfig(t)
+	ctx := context.Background()
+	_, err := cfg.Refresh(ctx, &oauth2.Token{})
+	if err == nil {
+		t.Fatal("Expected an error")
+	}
+	if err.(*url.Error).Temporary() {
+		t.Error("Expected a permanent error")
+	}
+	if err.(*url.Error).Timeout() {
+		t.Error("Expected a non-timeout error")
+	}
+}
+
+func TestEmulatorRefreshInvalidHost(t *testing.T) {
+	cfg := testIdpConfig(t)
+	ctx := context.Background()
+	_, refreshToken, err := cfg.Exchange(ctx, testAccessToken(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refreshToken == nil {
+		t.Fatal("Expected non nil token")
+	}
+
+	cfg = NewIdpConfig("test_api_key", "invalid")
+	_, err = cfg.Refresh(ctx, refreshToken)
+	if err == nil {
+		t.Fatal("Expected an error")
+	}
+	if err.(*url.Error).Timeout() {
+		t.Error("Expected a non-timeout error")
+	}
+}
+
+func TestIdpErrorDefaultsToPermanentError(t *testing.T) {
+	err := newIdpError(fmt.Errorf("test error"))
+	if err.(*url.Error).Temporary() {
+		t.Error("Expected a permanent error")
+	}
+	if err.(*url.Error).Timeout() {
+		t.Error("Expected a non-timeout error")
 	}
 }

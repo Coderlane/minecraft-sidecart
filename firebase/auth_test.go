@@ -141,7 +141,8 @@ func TestSignInWithConsoleAuthenticates(t *testing.T) {
 	defer tas.Close()
 
 	ctx := context.Background()
-	_, auth := testAppWithAuth(t)
+	tuc := testUserCache{}
+	_, auth := testAppWithAuth(t, WithUserCache(&tuc))
 
 	user, tok, err := auth.SignInWithConsoleWithInput(ctx,
 		tas.Config(t), &tas.authBuffer)
@@ -155,6 +156,53 @@ func TestSignInWithConsoleAuthenticates(t *testing.T) {
 			now, tok.Expiry)
 	}
 	t.Logf("%+v\n", user)
+}
+
+func TestSignInWithConsoleWithInvalidTokenFails(t *testing.T) {
+	tas := newTestAuthServer()
+	defer tas.Close()
+
+	ctx := context.Background()
+	_, auth := testAppWithAuth(t)
+
+	// Use an invalid auth code
+	tas.authBuffer.Reset()
+	tas.authBuffer.WriteString("incorrect\n")
+	_, _, err := auth.SignInWithConsoleWithInput(ctx,
+		tas.Config(t), &tas.authBuffer)
+	if err == nil {
+		t.Errorf("Expected to fail to authenticate")
+	}
+	t.Log(err)
+}
+
+func TestSignInWithConsoleNeedsInput(t *testing.T) {
+	tas := newTestAuthServer()
+	defer tas.Close()
+
+	ctx := context.Background()
+	_, auth := testAppWithAuth(t)
+
+	// No mock input will cause us to fail with EOF
+	_, _, err := auth.SignInWithConsole(ctx, tas.Config(t))
+	if err == nil {
+		t.Errorf("Expected to fail to get input")
+	}
+	t.Log(err)
+}
+
+func TestSignInWithTokenWithInvalidTokenFails(t *testing.T) {
+	tas := newTestAuthServer()
+	defer tas.Close()
+
+	ctx := context.Background()
+	_, auth := testAppWithAuth(t)
+
+	_, _, err := auth.SignInWithToken(ctx, &oauth2.Token{})
+	if err == nil {
+		t.Errorf("Expected to fail to authenticate")
+	}
+	t.Log(err)
 }
 
 func TestTokenCacheRefreshes(t *testing.T) {
@@ -196,6 +244,34 @@ func TestTokenCacheRefreshes(t *testing.T) {
 	if !reflect.DeepEqual(*tok, *newtok) {
 		t.Errorf("Expected to reuse token: %v != %v\n", *tok, *newtok)
 	}
+}
+
+func TestTokenCacheRefreshWithInvalidTokenFails(t *testing.T) {
+	tas := newTestAuthServer()
+	defer tas.Close()
+
+	ctx := context.Background()
+	_, auth := testAppWithAuth(t)
+
+	user, _, err := auth.SignInWithConsoleWithInput(ctx,
+		tas.Config(t), &tas.authBuffer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user.RefreshToken = "invalid"
+	tuc := testUserCache{"default": user}
+	_, auth = testAppWithAuth(t, WithUserCache(&tuc))
+
+	if !reflect.DeepEqual(user, auth.CurrentUser()) {
+		t.Errorf("Expected to reuse user: %v != %v\n", user, auth.CurrentUser())
+	}
+
+	_, err = auth.Token()
+	if err == nil {
+		t.Errorf("Expected to fail to fetch a new token")
+	}
+	t.Log(err)
 }
 
 func TestTokenCacheUnauthFails(t *testing.T) {

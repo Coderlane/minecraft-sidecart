@@ -192,7 +192,7 @@ func (cfg IdpConfig) Refresh(
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, newIdpErrorFromResponse(
-			fmt.Errorf("failed to exchange token"), resp.StatusCode, string(data))
+			fmt.Errorf("failed to refresh token"), resp.StatusCode, string(data))
 	}
 
 	var idpResp idpRefreshResponse
@@ -210,37 +210,5 @@ func (cfg IdpConfig) Refresh(
 		RefreshToken: idpResp.RefreshToken,
 		Expiry:       *expiry,
 	}
-	return token, nil
-}
-
-// TokenSource creates a new IDP Token Source which provides tokens with the
-// IDP ID Token as the Access Token. Wrap this class with a cache to avoid
-// extra refresh calls.
-func (cfg IdpConfig) TokenSource(
-	ctx context.Context, token *oauth2.Token) oauth2.TokenSource {
-	return newIdpTokenSource(ctx, cfg, token)
-}
-
-type idpTokenSource struct {
-	ctx   context.Context
-	cfg   IdpConfig
-	token *oauth2.Token
-}
-
-func newIdpTokenSource(ctx context.Context,
-	cfg IdpConfig, token *oauth2.Token) *idpTokenSource {
-	return &idpTokenSource{
-		ctx:   ctx,
-		cfg:   cfg,
-		token: token,
-	}
-}
-
-func (ts *idpTokenSource) Token() (*oauth2.Token, error) {
-	token, err := ts.cfg.Refresh(ts.ctx, ts.token)
-	if err != nil {
-		return nil, err
-	}
-	ts.token = token
 	return token, nil
 }
