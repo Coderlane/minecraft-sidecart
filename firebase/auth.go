@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"golang.org/x/oauth2"
 	gauth "golang.org/x/oauth2/google"
@@ -29,14 +30,14 @@ type UserCache interface {
 }
 
 type Auth struct {
-	app         *App
-	currentUser *User
-
-	token     *oauth2.Token
-	idpConfig *internal.IdpConfig
-
-	userCache    UserCache
+	app          *App
 	emulatorHost string
+	idpConfig    *internal.IdpConfig
+	userCache    UserCache
+
+	mtx         sync.RWMutex
+	currentUser *User
+	token       *oauth2.Token
 }
 
 type User struct {
@@ -49,7 +50,10 @@ type User struct {
 }
 
 func (auth *Auth) CurrentUser() *User {
-	return auth.currentUser
+	auth.mtx.RLock()
+	user := auth.currentUser
+	auth.mtx.RUnlock()
+	return user
 }
 
 func (auth *Auth) SignInWithConsole(
@@ -88,6 +92,8 @@ func (auth *Auth) SignInWithToken(
 	if err != nil {
 		return nil, nil, err
 	}
+
+	auth.mtx.Lock()
 	auth.currentUser = &User{
 		UserID:        user.LocalID,
 		EmailVerified: user.EmailVerified,
@@ -99,19 +105,30 @@ func (auth *Auth) SignInWithToken(
 	if auth.userCache != nil {
 		err = auth.userCache.Set("default", auth.currentUser)
 	}
+	auth.mtx.Unlock()
 	return auth.currentUser, token, err
 }
 
-func (auth *Auth) Token() (*oauth2.Token, error) {
+func (auth *Auth) Token() (token *oauth2.Token, err error) {
+	auth.mtx.RLock()
 	if auth.token.Valid() {
-		return auth.token, nil
+		token = auth.token
+	} else if auth.currentUser == nil {
+		err = fmt.Errorf("no user is currently authenticated")
 	}
-	if auth.currentUser == nil {
-		return nil, fmt.Errorf("no user is currently authenticated")
+	auth.mtx.RUnlock()
+	if token != nil || err != nil {
+		return token, err
+	}
+	auth.mtx.Lock()
+	defer auth.mtx.Unlock()
+	if auth.token.Valid() {
+		token = auth.token
+		return token, nil
 	}
 	// TODO: Get the context from elsewhere
 	ctx := context.Background()
-	token, err := auth.idpConfig.Refresh(ctx,
+	token, err = auth.idpConfig.Refresh(ctx,
 		&oauth2.Token{RefreshToken: auth.currentUser.RefreshToken})
 	if err != nil {
 		return nil, err
