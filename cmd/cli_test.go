@@ -126,7 +126,6 @@ func TestDaemonStart(t *testing.T) {
 }
 
 func TestAuthSignIn(t *testing.T) {
-	t.Skipf("github.com/urfave/cli/pull/1225")
 	tc := newTestContext(t)
 	defer tc.Stop()
 	tc.StartDaemon(t)
@@ -146,7 +145,6 @@ func TestAuthSignIn(t *testing.T) {
 }
 
 func TestAuthSignInWithoutDaemonSucceeds(t *testing.T) {
-	t.Skipf("github.com/urfave/cli/pull/1225")
 	tc := newTestContext(t)
 	defer tc.Stop()
 
