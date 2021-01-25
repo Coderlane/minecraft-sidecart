@@ -45,17 +45,3 @@ func (mr *MockServerMockRecorder) GetServerInfo() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServerInfo", reflect.TypeOf((*MockServer)(nil).GetServerInfo))
 }
-
-// GetType mocks base method
-func (m *MockServer) GetType() Type {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetType")
-	ret0, _ := ret[0].(Type)
-	return ret0
-}
-
-// GetType indicates an expected call of GetType
-func (mr *MockServerMockRecorder) GetType() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetType", reflect.TypeOf((*MockServer)(nil).GetType))
-}

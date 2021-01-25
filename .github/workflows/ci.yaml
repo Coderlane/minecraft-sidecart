@@ -43,7 +43,7 @@ jobs:
 
     - name: Test
       run:
-        firebase emulators:exec 'go test -v -coverprofile=coverage.out ./...'
+        firebase emulators:exec 'go test -p 1 -v -coverprofile=coverage.out ./...'
       env:
         GOPRIVATE: github.com/Coderlane/*
         FIREBASE_AUTH_EMULATOR_HOST: localhost:9099

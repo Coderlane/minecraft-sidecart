@@ -8,6 +8,7 @@ import (
 	firestore "cloud.google.com/go/firestore"
 
 	"github.com/Coderlane/minecraft-sidecart/server"
+	"github.com/Coderlane/minecraft-sidecart/server/minecraft"
 )
 
 func testRequiresEmulators(t *testing.T) {
@@ -42,12 +43,12 @@ func TestDatabaseCreateAndUpdate(t *testing.T) {
 	db := testNewDatabase(t, ctx)
 
 	id, err := db.CreateServer(ctx, "test",
-		server.ServerTypeMinecraft, server.MinecraftServerInfo{})
+		server.ServerTypeMinecraft, minecraft.ServerInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = db.UpdateServerInfo(ctx, id, server.MinecraftServerInfo{})
+	err = db.UpdateServerInfo(ctx, id, minecraft.ServerInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestDatabaseCreateHandlesFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	cancel()
 	_, err := db.CreateServer(ctx, "test",
-		server.ServerTypeMinecraft, server.MinecraftServerInfo{})
+		server.ServerTypeMinecraft, minecraft.ServerInfo{})
 	if err == nil {
 		t.Error("Expected an error")
 	}
@@ -71,7 +72,7 @@ func TestDatabaseUpdateHandlesFailure(t *testing.T) {
 	ctx := context.Background()
 	db := testNewDatabase(t, ctx)
 
-	err := db.UpdateServerInfo(ctx, "unknown", server.MinecraftServerInfo{})
+	err := db.UpdateServerInfo(ctx, "unknown", minecraft.ServerInfo{})
 	if err == nil {
 		t.Error("Expected an error")
 	}

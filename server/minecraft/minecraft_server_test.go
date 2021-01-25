@@ -1,4 +1,4 @@
-package server
+package minecraft
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ server-port=25565`
 type testContext struct {
 	ctrl   *gomock.Controller
 	client *mcclient.MockMinecraftClient
-	server Server
+	server *Server
 }
 
 func newTestContext(t *testing.T) *testContext {
@@ -37,7 +37,7 @@ func newTestContext(t *testing.T) *testContext {
 
 	ctrl := gomock.NewController(t)
 	client := mcclient.NewMockMinecraftClient(ctrl)
-	server, err := newMinecraftServerWithCustomClientBuider(tempDir,
+	server, err := newServerWithCustomClientBuider(tempDir,
 		func(*config.Config) (mcclient.MinecraftClient, error) {
 			client.EXPECT().Handshake(gomock.Any()).Return(nil)
 			return client, nil
@@ -54,16 +54,6 @@ func newTestContext(t *testing.T) *testContext {
 
 func (tc *testContext) Finish() {
 	tc.ctrl.Finish()
-}
-
-func TestGetMinecraftServerType(t *testing.T) {
-	tc := newTestContext(t)
-	defer tc.Finish()
-
-	serverType := tc.server.GetType()
-	if serverType != ServerTypeMinecraft {
-		t.Errorf("Expected: %v Got: %v\n", ServerTypeMinecraft, serverType)
-	}
 }
 
 func TestNewServerBadConfig(t *testing.T) {
@@ -91,7 +81,7 @@ func TestGetMinecraftServerInfoOnline(t *testing.T) {
 	}
 	tc.client.EXPECT().Status().Return(&status, nil)
 
-	serverInfo := tc.server.GetServerInfo().(MinecraftServerInfo)
+	serverInfo := tc.server.GetServerInfo().(ServerInfo)
 	if !serverInfo.Online {
 		t.Errorf("Expected server to be online.")
 	}
@@ -114,7 +104,7 @@ func TestGetMinecraftServerInfoHandlesOffline(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	serverInfo := server.GetServerInfo().(MinecraftServerInfo)
+	serverInfo := server.GetServerInfo().(ServerInfo)
 	if serverInfo.Online {
 		t.Errorf("Expected server to be offline.")
 	}
@@ -126,7 +116,7 @@ func TestGetMinecraftServerInfoHandlesError(t *testing.T) {
 
 	tc.client.EXPECT().Status().Return(nil, fmt.Errorf("failed to get status"))
 
-	serverInfo := tc.server.GetServerInfo().(MinecraftServerInfo)
+	serverInfo := tc.server.GetServerInfo().(ServerInfo)
 	if serverInfo.Online {
 		t.Errorf("Expected server to be offline.")
 	}

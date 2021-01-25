@@ -9,3 +9,6 @@ minecraft-sidecart
 
 # Firebase Emulator logs
 *.log
+
+# Artifacts
+daemon.json

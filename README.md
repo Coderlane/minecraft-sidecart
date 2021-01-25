@@ -6,14 +6,24 @@
 
 ## Usage
 
-Using minecraft-sidecart is simple for now, simply point it at the root of your Minecraft server.
+### Authenticate
+
+Use `minecraft-sidecart auth signin` to authenticate. It will output a URL for
+you to copy and paste into your browser. Once authenticated, copy the code from
+your browser back in to `minecraft-sidecart`.
+
+### Daemon
+
+Launch the daemon with `minecraft-sidecart daemon`. The daemon will detect
+changes on the Minecraft server and upload them as they occur.
+
+### Server
+
+Use `minecraft-sidecart server add` to add a server for the daemon to watch.
+Simply provide a `name` and a `path` to the root of the server directory. For
+example:
 
 ```
-Usage of ./minecraft-sidecart:
-  -server string
-    	Path to the root of the server. (default "./")
+./minecraft-sidecart server add \
+  --name "Main Server" --path /opt/minecraft/server
 ```
-
-For example: `./minecraft-sidecart --server /opt/minecraft/server` 
-
-The first run will require authenticating. You'll need to open the URL that `minecraft-sidecart` outputs, authenticate, and copy the code back in to `minecraft-sidecart`. After that, `minecraft-sidecart` will automatically detect changes and upload them as necessary.

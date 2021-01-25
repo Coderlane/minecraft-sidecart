@@ -48,3 +48,8 @@ func (luc *LocalUserCache) Set(userID string, user *firebase.User) error {
 	}
 	return keyring.Set(luc.projectID, userID, string(data))
 }
+
+// Delete removes a user from the user cache.
+func (luc *LocalUserCache) Delete(userID string) {
+	keyring.Delete(luc.projectID, userID)
+}

@@ -27,6 +27,26 @@ var authProviderConfigs = map[AuthProvider][]byte{}
 type UserCache interface {
 	Get(string) (*User, error)
 	Set(string, *User) error
+	Delete(string)
+}
+
+type MemoryUserCache map[string]*User
+
+func (muc MemoryUserCache) Get(userID string) (*User, error) {
+	user, ok := muc[userID]
+	if !ok {
+		return nil, fmt.Errorf("Not found.")
+	}
+	return user, nil
+}
+
+func (muc *MemoryUserCache) Set(userID string, user *User) error {
+	(*muc)[userID] = user
+	return nil
+}
+
+func (muc *MemoryUserCache) Delete(userID string) {
+	delete(*muc, userID)
 }
 
 type Auth struct {
@@ -109,6 +129,40 @@ func (auth *Auth) SignInWithToken(
 	return auth.currentUser, token, err
 }
 
+func (auth *Auth) signInWithUser(ctx context.Context,
+	user *User) (token *oauth2.Token, err error) {
+	token, err = auth.idpConfig.Refresh(ctx,
+		&oauth2.Token{RefreshToken: user.RefreshToken})
+	if err != nil {
+		return nil, err
+	}
+	auth.currentUser = user
+	auth.currentUser.RefreshToken = token.RefreshToken
+	auth.token = token
+	if auth.userCache != nil {
+		err = auth.userCache.Set("default", auth.currentUser)
+	}
+	return token, err
+}
+
+func (auth *Auth) SignInWithUser(ctx context.Context,
+	user *User) (token *oauth2.Token, err error) {
+	auth.mtx.Lock()
+	token, err = auth.signInWithUser(ctx, user)
+	auth.mtx.Unlock()
+	return token, err
+}
+
+func (auth *Auth) SignOut() {
+	auth.mtx.Lock()
+	if auth.currentUser != nil && auth.userCache != nil {
+		auth.userCache.Delete(auth.currentUser.UserID)
+	}
+	auth.currentUser = nil
+	auth.token = nil
+	auth.mtx.Unlock()
+}
+
 func (auth *Auth) Token() (token *oauth2.Token, err error) {
 	auth.mtx.RLock()
 	if auth.token.Valid() {
@@ -128,18 +182,7 @@ func (auth *Auth) Token() (token *oauth2.Token, err error) {
 	}
 	// TODO: Get the context from elsewhere
 	ctx := context.Background()
-	token, err = auth.idpConfig.Refresh(ctx,
-		&oauth2.Token{RefreshToken: auth.currentUser.RefreshToken})
-	if err != nil {
-		return nil, err
-	}
-	auth.token = token
-	if auth.userCache != nil {
-		// Refresh the refresh token
-		auth.currentUser.RefreshToken = token.RefreshToken
-		err = auth.userCache.Set("default", auth.currentUser)
-	}
-	return auth.token, nil
+	return auth.signInWithUser(ctx, auth.currentUser)
 }
 
 func createRandomState() (string, error) {
@@ -152,10 +195,10 @@ func createRandomState() (string, error) {
 	return encoded, nil
 }
 
-func NewOAuthConfig(provider AuthProvider) (*oauth2.Config, error) {
+func NewOAuthConfig(provider AuthProvider) *oauth2.Config {
 	cfg, err := gauth.ConfigFromJSON(authProviderConfigs[provider], "")
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	switch provider {
 	case GoogleAuthProvider:
@@ -165,5 +208,5 @@ func NewOAuthConfig(provider AuthProvider) (*oauth2.Config, error) {
 			"openid",
 		}
 	}
-	return cfg, nil
+	return cfg
 }
