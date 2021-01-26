@@ -85,7 +85,8 @@ func (dae *Daemon) AddServer(
 		return err
 	}
 	tmpID, err := dae.db.CreateServer(dae.ctx,
-		dae.auth.CurrentUser().UserID, server.GetType(srv), srv.GetServerInfo())
+		dae.auth.CurrentUser().UserID, spec.Name,
+		server.GetType(srv), srv.GetServerInfo())
 	if err != nil {
 		return err
 	}

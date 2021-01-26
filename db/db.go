@@ -1,7 +1,5 @@
 package db
 
-//go:generate mockgen -destination=mock_db.go -package=db -self_package=github.com/Coderlane/minecraft-sidecart/db github.com/Coderlane/minecraft-sidecart/db Database
-
 import (
 	"context"
 
@@ -12,7 +10,8 @@ import (
 
 // Database wraps a firestore database connection
 type Database interface {
-	CreateServer(context.Context, string, server.Type, interface{}) (string, error)
+	CreateServer(context.Context, string, string,
+		server.Type, interface{}) (string, error)
 	UpdateServerInfo(context.Context, string, interface{}) error
 }
 
@@ -29,8 +28,10 @@ func NewDatabase(
 }
 
 func (db *database) CreateServer(ctx context.Context,
-	userID string, serverType server.Type, serverInfo interface{}) (string, error) {
+	userID string, name string,
+	serverType server.Type, serverInfo interface{}) (string, error) {
 	serverDetails := serverDoc{
+		Name:   name,
 		Type:   serverType,
 		Owners: []string{userID},
 		Info:   serverInfo,

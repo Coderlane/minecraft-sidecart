@@ -42,7 +42,7 @@ func TestDatabaseCreateAndUpdate(t *testing.T) {
 	ctx := context.Background()
 	db := testNewDatabase(t, ctx)
 
-	id, err := db.CreateServer(ctx, "test",
+	id, err := db.CreateServer(ctx, "test", "test",
 		server.ServerTypeMinecraft, minecraft.ServerInfo{})
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestDatabaseCreateHandlesFailure(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	cancel()
-	_, err := db.CreateServer(ctx, "test",
+	_, err := db.CreateServer(ctx, "test", "test",
 		server.ServerTypeMinecraft, minecraft.ServerInfo{})
 	if err == nil {
 		t.Error("Expected an error")
