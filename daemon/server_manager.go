@@ -72,7 +72,7 @@ func (mgr *serverManager) saveConfig() error {
 		return err
 	}
 	if _, err := os.Stat(mgr.cfgPath); os.IsNotExist(err) {
-		os.Mkdir(path.Dir(mgr.cfgPath), 0600)
+		os.Mkdir(path.Dir(mgr.cfgPath), 0700)
 	}
 	return ioutil.WriteFile(mgr.cfgPath, data, 0600)
 }

@@ -26,7 +26,7 @@ func testAddConfigPath(dir string) func() {
 }
 
 func testCreateTestServer(t *testing.T, dir string) {
-	os.MkdirAll(dir, 0600)
+	os.MkdirAll(dir, 0700)
 	err := ioutil.WriteFile(path.Join(dir, "server.properties"),
 		[]byte(testServerConfig), 0600)
 	if err != nil {
