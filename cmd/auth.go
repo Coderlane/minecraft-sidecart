@@ -16,8 +16,8 @@ var authSignInCommand = &cli.Command{
 		auth := c.App.Metadata["auth"].(*firebase.Auth)
 		cfg := c.App.Metadata["oauth"].(*oauth2.Config)
 
-		user, _, err := auth.SignInWithConsoleWithInput(
-			c.Context, cfg, c.App.Reader)
+		user, _, err := auth.SignInWithConsoleWithIO(
+			c.Context, cfg, c.App.Reader, c.App.Writer)
 		if err != nil {
 
 			return err

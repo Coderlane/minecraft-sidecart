@@ -25,10 +25,14 @@ type App struct {
 	ClientSecret      string
 }
 
+// NewAuth creates a new authentication client based on the `APIKey`,
+// `ClientID`, and `ClientSecret` in the `App`. You can specify any number
+// of additional AuthOptions when creating the new client.
 func (app *App) NewAuth(opts ...AuthOption) *Auth {
 	auth := &Auth{
 		app:         app,
 		currentUser: nil,
+		userCache:   &MemoryUserCache{},
 	}
 	for _, opt := range opts {
 		opt.Apply(auth)
@@ -43,6 +47,8 @@ func (app *App) NewAuth(opts ...AuthOption) *Auth {
 	return auth
 }
 
+// NewFirestore creates a new Firestore client based on the `ProjectID` in the
+// App. It uses `auth` for authenticating with `auth.CurrentUser()`.
 func (app *App) NewFirestore(ctx context.Context, auth *Auth) (*firestore.Client, error) {
 	authOpt := option.WithTokenSource(auth)
 	return firestore.NewClient(ctx, app.ProjectID, authOpt)

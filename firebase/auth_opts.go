@@ -1,5 +1,7 @@
 package firebase
 
+// AuthOption is a generic interface used to apply options when creating a
+// new authentication client.
 type AuthOption interface {
 	Apply(auth *Auth)
 }
@@ -12,7 +14,8 @@ func (wuc withUserCache) Apply(auth *Auth) {
 	auth.userCache = wuc.uc
 }
 
-// Attach a user cache to the authlication client
+// WithUserCache provides a user cache for the authentication client. This can
+// be used to preserve users across a session.
 func WithUserCache(uc UserCache) AuthOption {
 	return withUserCache{uc}
 }
@@ -25,7 +28,8 @@ func (weh withEmulatorHost) Apply(auth *Auth) {
 	auth.emulatorHost = weh.emulatorHost
 }
 
-// Attach an emulator to the authlication client
+// WithEmulatorHost specifies the authentication emulator host to use in
+// testing. Loading from environment variables is not supported.
 func WithEmulatorHost(emulatorHost string) AuthOption {
 	return withEmulatorHost{emulatorHost}
 }

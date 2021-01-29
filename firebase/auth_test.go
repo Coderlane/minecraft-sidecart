@@ -43,8 +43,8 @@ func TestSignInWithConsoleAuthenticates(t *testing.T) {
 	muc := MemoryUserCache{}
 	_, auth := testAppWithAuth(t, WithUserCache(&muc))
 
-	user, tok, err := auth.SignInWithConsoleWithInput(ctx,
-		tas.Config(t), testAuthBuffer())
+	user, tok, err := auth.SignInWithConsoleWithIO(ctx,
+		tas.Config(t), testAuthBuffer(), os.Stdout)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,8 +67,8 @@ func TestSignInWithConsoleWithInvalidTokenFails(t *testing.T) {
 	// Use an invalid auth code
 	var buf bytes.Buffer
 	buf.WriteString("incorrect\n")
-	_, _, err := auth.SignInWithConsoleWithInput(ctx,
-		tas.Config(t), &buf)
+	_, _, err := auth.SignInWithConsoleWithIO(ctx,
+		tas.Config(t), &buf, os.Stdout)
 	if err == nil {
 		t.Errorf("Expected to fail to authenticate")
 	}
@@ -111,8 +111,8 @@ func TestSignInWithUserAuthenticates(t *testing.T) {
 	ctx := context.Background()
 	_, auth := testAppWithAuth(t)
 
-	user, _, err := auth.SignInWithConsoleWithInput(ctx,
-		tas.Config(t), testAuthBuffer())
+	user, _, err := auth.SignInWithConsoleWithIO(ctx,
+		tas.Config(t), testAuthBuffer(), os.Stdout)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,8 +138,8 @@ func TestSignOutSignsOut(t *testing.T) {
 	muc := MemoryUserCache{}
 	_, auth := testAppWithAuth(t, WithUserCache(&muc))
 
-	user, _, err := auth.SignInWithConsoleWithInput(ctx,
-		tas.Config(t), testAuthBuffer())
+	user, _, err := auth.SignInWithConsoleWithIO(ctx,
+		tas.Config(t), testAuthBuffer(), os.Stdout)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,8 +160,8 @@ func TestTokenCacheRefreshes(t *testing.T) {
 	ctx := context.Background()
 	_, auth := testAppWithAuth(t)
 
-	user, _, err := auth.SignInWithConsoleWithInput(ctx,
-		tas.Config(t), testAuthBuffer())
+	user, _, err := auth.SignInWithConsoleWithIO(ctx,
+		tas.Config(t), testAuthBuffer(), os.Stdout)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,8 +201,8 @@ func TestTokenCacheRefreshWithInvalidTokenFails(t *testing.T) {
 	ctx := context.Background()
 	_, auth := testAppWithAuth(t)
 
-	user, _, err := auth.SignInWithConsoleWithInput(ctx,
-		tas.Config(t), testAuthBuffer())
+	user, _, err := auth.SignInWithConsoleWithIO(ctx,
+		tas.Config(t), testAuthBuffer(), os.Stdout)
 	if err != nil {
 		t.Fatal(err)
 	}
