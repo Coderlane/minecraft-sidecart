@@ -127,6 +127,9 @@ func (cfg IdpConfig) Exchange(
 
 	request, err := http.NewRequestWithContext(ctx,
 		http.MethodPost, cfg.authURL, &buf)
+	if err != nil {
+		return nil, nil, err
+	}
 	request.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -177,6 +180,9 @@ func (cfg IdpConfig) Refresh(
 
 	request, err := http.NewRequestWithContext(ctx,
 		http.MethodPost, cfg.tokenURL, &buf)
+	if err != nil {
+		return nil, err
+	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{}

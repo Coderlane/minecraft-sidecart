@@ -58,7 +58,7 @@ func (dae *Daemon) requireAuth() error {
 
 func (dae *Daemon) SignIn(
 	user *firebase.User, token *oauth2.Token) (err error) {
-	token, err = dae.auth.SignInWithUser(dae.ctx, user)
+	_, err = dae.auth.SignInWithUser(dae.ctx, user)
 	return err
 }
 
