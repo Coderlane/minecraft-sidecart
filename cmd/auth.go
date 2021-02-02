@@ -29,7 +29,7 @@ var authSignInCommand = &cli.Command{
 			// It is OK if we can not connect to the daemon right now, we will
 			// have already cached the credential. The daemon will get it the
 			// next time it runs.
-			daemonWarning(c.App.Writer, c.App.Name)
+			daemonWarning(c.App.Writer, "minecraft-sidecart")
 			return nil
 		}
 
