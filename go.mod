@@ -1,6 +1,6 @@
 module github.com/Coderlane/minecraft-sidecart
 
-go 1.15
+go 1.16
 
 require (
 	cloud.google.com/go/firestore v1.4.0

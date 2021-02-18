@@ -1,5 +1,4 @@
 // Package firebase wraps the firebase Admin API for use in a client
-//go:generate go run embed.go
 package firebase
 
 import (
@@ -24,6 +23,9 @@ type App struct {
 	ClientID          string
 	ClientSecret      string
 }
+
+// DefaultApp is the default, built in, firebase application
+var DefaultApp App
 
 // NewAuth creates a new authentication client based on the `APIKey`,
 // `ClientID`, and `ClientSecret` in the `App`. You can specify any number
