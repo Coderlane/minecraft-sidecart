@@ -9,7 +9,7 @@ import (
 
 func TestRPCDaemonRunAndCancel(t *testing.T) {
 	DefaultRootDir = t.TempDir()
-	app := &firebase.App{}
+	app := &firebase.App{ProjectID: "test"}
 	auth := app.NewAuth()
 	ctx := context.Background()
 	rpcDaemon, err := NewRPCDaemon(ctx, app, auth)
@@ -28,7 +28,7 @@ func TestRPCDaemonRunAndCancel(t *testing.T) {
 
 func TestRPCDaemonDuplicateFails(t *testing.T) {
 	DefaultRootDir = t.TempDir()
-	app := &firebase.App{}
+	app := &firebase.App{ProjectID: "test"}
 	auth := app.NewAuth()
 	ctx := context.Background()
 	rpcDaemon, err := NewRPCDaemon(ctx, app, auth)
